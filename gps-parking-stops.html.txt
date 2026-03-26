@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>GPS Parking Stops (Raw)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+body { margin:0; font-family:Arial; }
+
+#controls {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+z-index: 9999;
+padding:10px;
+background:#f0f0f0;
+border-bottom:1px solid #ccc;
+}
+
+#map {
+height:50vh;
+margin-top:70px;
+}
+
+#timeline {
+height:50vh;
+overflow-y:auto;
+padding:10px;
+background:#fafafa;
+}
+
+.item {
+padding:10px;
+border-bottom:1px solid #ddd;
+cursor:pointer;
+}
+
+.item:hover { background:#eee; }
+</style>
+</head>
+
+<body>
+
+<div id="controls">
+<h3>ALL GPS PARKING STOPS (RAW DATA)</h3>
+</div>
+
+<div id="map"></div>
+<div id="timeline"></div>
+
+<script>
+
+// MAP
+let map = L.map('map').setView([52.86,-104.60],13)
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{maxZoom:19}
+).addTo(map)
+
+let points = []
+let activeMarkers = []
+
+// 🔥 YOUR DATA WILL GO HERE
+points = []
+
+// SORT
+points.sort((a,b)=> new Date(a.start) - new Date(b.start))
+
+// TIMELINE
+let t=document.getElementById("timeline")
+
+points.forEach(p=>{
+
+let div=document.createElement("div")
+div.className="item"
+
+div.innerHTML =
+"<b>" + p.start + "</b><br>" +
+"End: " + p.end + "<br>" +
+"Duration: " + p.duration + "<br>" +
+"Lat: " + p.lat + "<br>" +
+"Lon: " + p.lon
+
+div.onclick=()=>{
+
+activeMarkers.forEach(m => map.removeLayer(m))
+activeMarkers=[]
+
+let marker = L.marker([p.lat,p.lon]).addTo(map)
+activeMarkers.push(marker)
+
+map.setView([p.lat,p.lon],16)
+
+}
+
+t.appendChild(div)
+
+})
+
+</script>
+
+</body>
+</html>
