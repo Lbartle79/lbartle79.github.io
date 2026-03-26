@@ -1,109 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>GPS Parking Stops</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>GPS Parking Stops (Raw)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<style>
-body { margin:0; font-family:Arial; }
-
-#controls {
-position: fixed;
-top: 0;
-left: 0;
-width: 100%;
-z-index: 9999;
-padding:10px;
-background:#f0f0f0;
-border-bottom:1px solid #ccc;
-}
-
-#map {
-height:50vh;
-margin-top:70px;
-}
-
-#timeline {
-height:50vh;
-overflow-y:auto;
-padding:10px;
-background:#fafafa;
-}
-
-.item {
-padding:10px;
-border-bottom:1px solid #ddd;
-cursor:pointer;
-}
-
-.item:hover { background:#eee; }
-</style>
+  <style>
+    #map { height: 100vh; }
+    body { margin: 0; }
+  </style>
 </head>
-
 <body>
 
-<div id="controls">
-<h3>ALL GPS PARKING STOPS (RAW DATA)</h3>
-</div>
-
 <div id="map"></div>
-<div id="timeline"></div>
 
 <script>
+// Create map centered around Melfort
+var map = L.map('map').setView([52.86, -104.60], 13);
 
-// MAP
-let map = L.map('map').setView([52.86,-104.60],13)
+// Add map tiles
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+}).addTo(map);
 
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{maxZoom:19}
-).addTo(map)
+// 🔥 YOUR PARKING DATA (sample — we will expand this)
+var stops = [
+  {lat:52.866185, lng:-104.596817, start:"01:12", duration:"16 min"},
+  {lat:52.859828, lng:-104.600928, start:"01:59", duration:"11 min"},
+  {lat:52.859083, lng:-104.601093, start:"02:25", duration:"20 min"},
+  {lat:52.859398, lng:-104.601077, start:"02:48", duration:"1h 37m"},
+  {lat:52.859875, lng:-104.601027, start:"04:32", duration:"8 min"},
+  {lat:52.860530, lng:-104.601073, start:"04:46", duration:"22 min"},
+  {lat:52.860071, lng:-104.601139, start:"05:09", duration:"22 min"}
+];
 
-let points = []
-let activeMarkers = []
-
-// ð¥ YOUR DATA WILL GO HERE
-points = []
-
-// SORT
-points.sort((a,b)=> new Date(a.start) - new Date(b.start))
-
-// TIMELINE
-let t=document.getElementById("timeline")
-
-points.forEach(p=>{
-
-let div=document.createElement("div")
-div.className="item"
-
-div.innerHTML =
-"<b>" + p.start + "</b><br>" +
-"End: " + p.end + "<br>" +
-"Duration: " + p.duration + "<br>" +
-"Lat: " + p.lat + "<br>" +
-"Lon: " + p.lon
-
-div.onclick=()=>{
-
-activeMarkers.forEach(m => map.removeLayer(m))
-activeMarkers=[]
-
-let marker = L.marker([p.lat,p.lon]).addTo(map)
-activeMarkers.push(marker)
-
-map.setView([p.lat,p.lon],16)
-
-}
-
-t.appendChild(div)
-
-})
-
+// Add markers
+stops.forEach(function(stop) {
+  L.circleMarker([stop.lat, stop.lng], {
+    radius: 6
+  }).addTo(map)
+  .bindPopup("Start: " + stop.start + "<br>Duration: " + stop.duration);
+});
 </script>
 
 </body>
