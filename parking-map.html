@@ -36,14 +36,14 @@ body {
 
 <script>
 
-// CREATE MAP
+// MAP
 let map = L.map('map').setView([53.5, -105.5], 12);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// LAYER FOR MARKERS
+// LAYER
 let routeLayer = L.layerGroup().addTo(map);
 
 // DATA (your stops)
@@ -67,7 +67,7 @@ Object.keys(data.days).forEach(day => {
   daySelect.appendChild(opt);
 });
 
-// LOAD DAY (THIS IS THE CORE — CLEAN & SAFE)
+// LOAD DAY
 function loadDay(day){
 
   routeLayer.clearLayers();
@@ -84,12 +84,30 @@ function loadDay(day){
       color: "orange"
     }).addTo(routeLayer);
 
-    marker.bindPopup(
-      "Stop #" + (index+1) + "<br>" +
-      p.time.toLocaleTimeString()
-    );
+    marker.bindPopup("Loading address...");
+
+    // SAFE address lookup (does NOT break markers)
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.lat}&lon=${p.lng}`)
+      .then(res => res.json())
+      .then(data => {
+        let address = data.display_name || "Address not found";
+
+        marker.setPopupContent(
+          "Stop #" + (index+1) + "<br>" +
+          p.time.toLocaleTimeString() + "<br>" +
+          address
+        );
+      })
+      .catch(() => {
+        marker.setPopupContent(
+          "Stop #" + (index+1) + "<br>" +
+          p.time.toLocaleTimeString() + "<br>" +
+          "Address unavailable"
+        );
+      });
 
     bounds.push([p.lat, p.lng]);
+
   });
 
   if(bounds.length > 0){
