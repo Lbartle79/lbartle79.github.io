@@ -2,22 +2,29 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>GPS Stops</title>
+<title>GPS Map</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 body { margin:0; font-family:Arial; }
-#controls { padding:10px; background:#eee; }
-#map { height:500px; }
+
+#controls {
+  padding:10px;
+  background:#eee;
+}
+
+#map {
+  height:500px;
+}
 </style>
 </head>
 
 <body>
 
 <div id="controls">
-  <label>Day:</label>
-  <select id="daySelect"></select>
+<label>Day:</label>
+<select id="daySelect"></select>
 </div>
 
 <div id="map"></div>
@@ -27,44 +34,73 @@ body { margin:0; font-family:Arial; }
 <script>
 
 // MAP
-let map = L.map('map').setView([53.2033, -105.7531], 13);
+let map = L.map('map').setView([53.5, -105.5], 6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// LAYER
 let routeLayer = L.layerGroup().addTo(map);
 
-// NEW DATA (COMPLETELY DIFFERENT LOCATIONS)
-let data = {
-  days: {
-    "2026-01-01": [
-      {lat:53.2005, lng:-105.7500, time:new Date()},
-      {lat:53.2055, lng:-105.7400, time:new Date()},
-      {lat:53.2105, lng:-105.7600, time:new Date()},
-      {lat:53.1980, lng:-105.7700, time:new Date()}
-    ]
+// LOAD CSV + PARSE
+async function loadCSV(){
+
+  let response = await fetch("./location_history_raw_dump.csv");
+  let text = await response.text();
+
+  let points = [];
+
+  text.split("\n").forEach(line => {
+
+    let geo = line.match(/geo:([0-9\.-]+),([0-9\.-]+)/);
+    let time = line.match(/startTime":"([^"]+)/);
+
+    if(geo && time){
+      points.push({
+        lat: parseFloat(geo[1]),
+        lng: parseFloat(geo[2]),
+        time: new Date(time[1])
+      });
+    }
+
+  });
+
+  return points;
+}
+
+// GROUP BY DAY
+function groupByDay(points){
+
+  let days = {};
+
+  points.forEach(p => {
+
+    let day = p.time.toISOString().slice(0,10);
+
+    if(!days[day]) days[day] = [];
+
+    days[day].push(p);
+
+  });
+
+  return days;
+}
+
+// ADDRESS LOOKUP
+async function getAddress(lat, lng){
+  try {
+    let r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    let data = await r.json();
+    return data.display_name || "Address unavailable";
+  } catch {
+    return "Address unavailable";
   }
-};
-
-// DROPDOWN
-let daySelect = document.getElementById("daySelect");
-
-Object.keys(data.days).forEach(day => {
-  let opt = document.createElement("option");
-  opt.value = day;
-  opt.text = day;
-  daySelect.appendChild(opt);
-});
+}
 
 // LOAD DAY
-function loadDay(day){
+function loadDay(points){
 
   routeLayer.clearLayers();
-
-  let points = data.days[day];
-  if(!points) return;
 
   let bounds = [];
 
@@ -77,28 +113,15 @@ function loadDay(day){
 
     marker.bindPopup("Loading address...");
 
-    // ADDRESS LOOKUP
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.lat}&lon=${p.lng}`)
-      .then(res => res.json())
-      .then(data => {
-        let address = data.display_name || "Address not found";
-
-        marker.setPopupContent(
-          "Stop #" + (index+1) + "<br>" +
-          p.time.toLocaleTimeString() + "<br>" +
-          address
-        );
-      })
-      .catch(() => {
-        marker.setPopupContent(
-          "Stop #" + (index+1) + "<br>" +
-          p.time.toLocaleTimeString() + "<br>" +
-          "Address unavailable"
-        );
-      });
+    getAddress(p.lat, p.lng).then(addr => {
+      marker.setPopupContent(
+        "Stop #" + (index+1) + "<br>" +
+        p.time.toLocaleString() + "<br>" +
+        addr
+      );
+    });
 
     bounds.push([p.lat, p.lng]);
-
   });
 
   if(bounds.length > 0){
@@ -106,13 +129,35 @@ function loadDay(day){
   }
 }
 
-// EVENT
-daySelect.onchange = () => loadDay(daySelect.value);
+// INIT
+async function init(){
 
-// INITIAL LOAD
-let firstDay = Object.keys(data.days)[0];
-daySelect.value = firstDay;
-loadDay(firstDay);
+  let allPoints = await loadCSV();
+  let days = groupByDay(allPoints);
+
+  let daySelect = document.getElementById("daySelect");
+
+  Object.keys(days).sort().forEach(day => {
+
+    let opt = document.createElement("option");
+    opt.value = day;
+    opt.text = day;
+
+    daySelect.appendChild(opt);
+
+  });
+
+  daySelect.onchange = () => {
+    loadDay(days[daySelect.value]);
+  };
+
+  let firstDay = Object.keys(days)[0];
+  daySelect.value = firstDay;
+  loadDay(days[firstDay]);
+
+}
+
+init();
 
 </script>
 
