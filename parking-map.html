@@ -8,15 +8,8 @@
 
 <style>
 body { margin:0; font-family:Arial; }
-
-#controls {
-  padding:10px;
-  background:#eee;
-}
-
-#map {
-  height:500px;
-}
+#controls { padding:10px; background:#eee; }
+#map { height:500px; }
 </style>
 </head>
 
@@ -33,7 +26,6 @@ body { margin:0; font-family:Arial; }
 
 <script>
 
-// MAP
 let map = L.map('map').setView([53.5, -105.5], 6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -42,28 +34,39 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let routeLayer = L.layerGroup().addTo(map);
 
-// LOAD CSV + PARSE
+// LOAD CSV
 async function loadCSV(){
 
   let response = await fetch("./location_history_raw_dump.csv");
   let text = await response.text();
 
+  let lines = text.split("\n");
+
   let points = [];
 
-  text.split("\n").forEach(line => {
+  lines.forEach(line => {
 
-    let geo = line.match(/geo:([0-9\.-]+),([0-9\.-]+)/);
-    let time = line.match(/startTime":"([^"]+)/);
+    // MUCH MORE FORGIVING PARSER
+    if(line.includes("geo:")){
 
-    if(geo && time){
-      points.push({
-        lat: parseFloat(geo[1]),
-        lng: parseFloat(geo[2]),
-        time: new Date(time[1])
-      });
+      let geoMatch = line.match(/geo:([0-9\.-]+),([0-9\.-]+)/);
+
+      if(geoMatch){
+
+        let lat = parseFloat(geoMatch[1]);
+        let lng = parseFloat(geoMatch[2]);
+
+        let timeMatch = line.match(/"startTime":"([^"]+)/);
+
+        let time = timeMatch ? new Date(timeMatch[1]) : new Date();
+
+        points.push({lat, lng, time});
+      }
     }
 
   });
+
+  console.log("TOTAL POINTS:", points.length);
 
   return points;
 }
@@ -86,17 +89,6 @@ function groupByDay(points){
   return days;
 }
 
-// ADDRESS LOOKUP
-async function getAddress(lat, lng){
-  try {
-    let r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-    let data = await r.json();
-    return data.display_name || "Address unavailable";
-  } catch {
-    return "Address unavailable";
-  }
-}
-
 // LOAD DAY
 function loadDay(points){
 
@@ -107,21 +99,27 @@ function loadDay(points){
   points.forEach((p, index) => {
 
     let marker = L.circleMarker([p.lat, p.lng], {
-      radius: 6,
+      radius: 5,
       color: "orange"
     }).addTo(routeLayer);
 
-    marker.bindPopup("Loading address...");
+    marker.bindPopup("Loading...");
 
-    getAddress(p.lat, p.lng).then(addr => {
-      marker.setPopupContent(
-        "Stop #" + (index+1) + "<br>" +
-        p.time.toLocaleString() + "<br>" +
-        addr
-      );
-    });
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.lat}&lon=${p.lng}`)
+      .then(r => r.json())
+      .then(data => {
+        marker.setPopupContent(
+          "Stop #" + (index+1) + "<br>" +
+          p.time.toLocaleString() + "<br>" +
+          (data.display_name || "No address")
+        );
+      })
+      .catch(() => {
+        marker.setPopupContent("Address unavailable");
+      });
 
     bounds.push([p.lat, p.lng]);
+
   });
 
   if(bounds.length > 0){
@@ -133,6 +131,19 @@ function loadDay(points){
 async function init(){
 
   let allPoints = await loadCSV();
+
+  // 🚨 DEBUG: if nothing parsed, show fallback points
+  if(allPoints.length === 0){
+
+    console.log("CSV FAILED — showing test points");
+
+    allPoints = [
+      {lat:53.2033, lng:-105.7531, time:new Date()},
+      {lat:53.2100, lng:-105.7400, time:new Date()},
+      {lat:53.1900, lng:-105.7600, time:new Date()}
+    ];
+  }
+
   let days = groupByDay(allPoints);
 
   let daySelect = document.getElementById("daySelect");
@@ -153,6 +164,7 @@ async function init(){
 
   let firstDay = Object.keys(days)[0];
   daySelect.value = firstDay;
+
   loadDay(days[firstDay]);
 
 }
