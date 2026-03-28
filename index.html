@@ -1,175 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>GPS Map</title>
+  <title>GPS Stops Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<style>
-body { margin:0; font-family:Arial; }
-#controls { padding:10px; background:#eee; }
-#map { height:500px; }
-</style>
+  <style>
+    #map { height: 100vh; }
+  </style>
 </head>
 
 <body>
 
-<div id="controls">
-<label>Day:</label>
-<select id="daySelect"></select>
-</div>
-
 <div id="map"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-let map = L.map('map').setView([53.5, -105.5], 6);
+// MAP SETUP (centered on your area)
+let map = L.map('map').setView([52.8599, -104.6010], 14);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-let routeLayer = L.layerGroup().addTo(map);
+// ===== YOUR STOPS (CLEANED FROM YOUR FILE) =====
+let stops = [
+  { lat: 52.866673, lng: -104.594767 },
+  { lat: 52.860067, lng: -104.612083 },
+  { lat: 52.860062, lng: -104.600967 },
+  { lat: 52.860195, lng: -104.602300 },
+  { lat: 52.866557, lng: -104.594767 },
+  { lat: 52.855452, lng: -104.590250 },
+  { lat: 52.851177, lng: -104.586283 },
+  { lat: 52.856895, lng: -104.597433 },
+  { lat: 52.866560, lng: -104.594767 }
+];
 
-// LOAD CSV
-async function loadCSV(){
-
-  let response = await fetch("./location_history_raw_dump.csv");
-  let text = await response.text();
-
-  let lines = text.split("\n");
-
-  let points = [];
-
-  lines.forEach(line => {
-
-    // MUCH MORE FORGIVING PARSER
-    if(line.includes("geo:")){
-
-      let geoMatch = line.match(/geo:([0-9\.-]+),([0-9\.-]+)/);
-
-      if(geoMatch){
-
-        let lat = parseFloat(geoMatch[1]);
-        let lng = parseFloat(geoMatch[2]);
-
-        let timeMatch = line.match(/"startTime":"([^"]+)/);
-
-        let time = timeMatch ? new Date(timeMatch[1]) : new Date();
-
-        points.push({lat, lng, time});
-      }
-    }
-
-  });
-
-  console.log("TOTAL POINTS:", points.length);
-
-  return points;
-}
-
-// GROUP BY DAY
-function groupByDay(points){
-
-  let days = {};
-
-  points.forEach(p => {
-
-    let day = p.time.toISOString().slice(0,10);
-
-    if(!days[day]) days[day] = [];
-
-    days[day].push(p);
-
-  });
-
-  return days;
-}
-
-// LOAD DAY
-function loadDay(points){
-
-  routeLayer.clearLayers();
-
-  let bounds = [];
-
-  points.forEach((p, index) => {
-
-    let marker = L.circleMarker([p.lat, p.lng], {
-      radius: 5,
-      color: "orange"
-    }).addTo(routeLayer);
-
-    marker.bindPopup("Loading...");
-
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.lat}&lon=${p.lng}`)
-      .then(r => r.json())
-      .then(data => {
-        marker.setPopupContent(
-          "Stop #" + (index+1) + "<br>" +
-          p.time.toLocaleString() + "<br>" +
-          (data.display_name || "No address")
-        );
-      })
-      .catch(() => {
-        marker.setPopupContent("Address unavailable");
-      });
-
-    bounds.push([p.lat, p.lng]);
-
-  });
-
-  if(bounds.length > 0){
-    map.fitBounds(bounds);
-  }
-}
-
-// INIT
-async function init(){
-
-  let allPoints = await loadCSV();
-
-  // 🚨 DEBUG: if nothing parsed, show fallback points
-  if(allPoints.length === 0){
-
-    console.log("CSV FAILED — showing test points");
-
-    allPoints = [
-      {lat:53.2033, lng:-105.7531, time:new Date()},
-      {lat:53.2100, lng:-105.7400, time:new Date()},
-      {lat:53.1900, lng:-105.7600, time:new Date()}
-    ];
-  }
-
-  let days = groupByDay(allPoints);
-
-  let daySelect = document.getElementById("daySelect");
-
-  Object.keys(days).sort().forEach(day => {
-
-    let opt = document.createElement("option");
-    opt.value = day;
-    opt.text = day;
-
-    daySelect.appendChild(opt);
-
-  });
-
-  daySelect.onchange = () => {
-    loadDay(days[daySelect.value]);
-  };
-
-  let firstDay = Object.keys(days)[0];
-  daySelect.value = firstDay;
-
-  loadDay(days[firstDay]);
-
-}
-
-init();
+// ===== DRAW MARKERS =====
+stops.forEach(p => {
+  L.circleMarker([p.lat, p.lng], {
+    radius: 6,
+    color: "orange"
+  }).addTo(map);
+});
 
 </script>
 
