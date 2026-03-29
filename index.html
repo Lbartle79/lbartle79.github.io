@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GPS Stops Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <title>Test Map</title>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
   <style>
-    #map { height: 100vh; }
+    body { margin:0; }
+    #map { height:100vh; }
   </style>
 </head>
 
@@ -16,35 +16,25 @@
 
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 
-// MAP SETUP (centered on your area)
-let map = L.map('map').setView([52.8599, -104.6010], 14);
+// TEST: if you DON'T see this alert, your script isn't running
+alert("Map script is running");
+
+// MAP
+var map = L.map('map').setView([52.8599, -104.6010], 13);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// ===== YOUR STOPS (CLEANED FROM YOUR FILE) =====
-let stops = [
-  { lat: 52.866673, lng: -104.594767 },
-  { lat: 52.860067, lng: -104.612083 },
-  { lat: 52.860062, lng: -104.600967 },
-  { lat: 52.860195, lng: -104.602300 },
-  { lat: 52.866557, lng: -104.594767 },
-  { lat: 52.855452, lng: -104.590250 },
-  { lat: 52.851177, lng: -104.586283 },
-  { lat: 52.856895, lng: -104.597433 },
-  { lat: 52.866560, lng: -104.594767 }
-];
-
-// ===== DRAW MARKERS =====
-stops.forEach(p => {
-  L.circleMarker([p.lat, p.lng], {
-    radius: 6,
-    color: "orange"
-  }).addTo(map);
-});
+// SIMPLE TEST MARKER
+L.circleMarker([52.8599, -104.6010], {
+  radius: 8,
+  color: "red"
+}).addTo(map);
 
 </script>
 
